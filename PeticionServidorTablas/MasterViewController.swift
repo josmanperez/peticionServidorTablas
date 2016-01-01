@@ -58,7 +58,7 @@ class MasterViewController: UITableViewController, NSFetchedResultsControllerDel
   
   func passName(name: String, isbn: String, autores: [String], imagen: UIImage?) {
     print("1º VC")
-    if (name != "") {
+    if (name != "" && name != "ISBN no válido") {
       print("nombre: \(name)")
       let isbnM = ISBNModelo(isbn: isbn, nombre: name, autores: autores, imagen: imagen)
       isbnAcumulados.append(isbnM)
