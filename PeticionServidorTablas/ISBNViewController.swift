@@ -6,6 +6,7 @@
 //  Copyright © 2015 Josman Perez. All rights reserved.
 //
 
+import CoreData
 import UIKit
 
 protocol communicationWithTableView {
@@ -18,6 +19,10 @@ class ISBNViewController: UIViewController, UITextFieldDelegate {
   var tituloLibro:String = ""
   var autoresLibro:[String] = []
   var imagenLibro:UIImage?
+  
+  var autores = ""
+  
+  var contexto:NSManagedObjectContext?
   
   var mDelegate: communicationWithTableView!
   
@@ -36,6 +41,8 @@ class ISBNViewController: UIViewController, UITextFieldDelegate {
   
   override func viewDidLoad() {
     super.viewDidLoad()
+    
+    //self.contexto = (UIApplication.sharedApplication().delegate as! AppDelegate).managedObjectContext
     
     isbnInputText.delegate = self
   }
@@ -57,14 +64,58 @@ class ISBNViewController: UIViewController, UITextFieldDelegate {
   
   @IBAction func btnAceptar() {
     
+    print("comprobar que tengo algo en el modelo");
+    let seccionEntidad = NSEntityDescription.entityForName("Libro", inManagedObjectContext: self.contexto!)
+    let peticion = seccionEntidad?.managedObjectModel.fetchRequestFromTemplateWithName("petLibro", substitutionVariables: ["titulo":self.tituloLibro])
+    do {
+      let seccionEntidad2 = try self.contexto?.executeFetchRequest(peticion!)
+      if (seccionEntidad2?.count > 0) {
+        print("Ya existe un libro con ese nombre");
+      } else {
+        print("No existe libro con ese nombre")
+        // Guardamos en la base de datos
+        let nuevaSeccionEntidad = NSEntityDescription.insertNewObjectForEntityForName("Libro", inManagedObjectContext: self.contexto!)
+        nuevaSeccionEntidad.setValue(self.tituloLibro, forKey: "titulo")
+        if let imagen = imagenLibro {
+          nuevaSeccionEntidad.setValue(UIImagePNGRepresentation(imagen), forKey: "imagen")
+        } else {
+          nuevaSeccionEntidad.setValue(nil, forKey: "imagen")
+        }
+        nuevaSeccionEntidad.setValue(self.autores, forKey: "autores")
+        nuevaSeccionEntidad.setValue(self.isbnLibro, forKey: "isbn")
+        do {
+          try self.contexto?.save()
+        } catch {
+          print("error")
+        }
+      }
+      
+    } catch {
+      
+    }
+    
     if let texto = labelTituloText.text {
       print("2ºVC: \(texto)")
       self.mDelegate.passName(texto, isbn: isbnLibro, autores: autoresLibro,imagen: imagenLibro)
     } else {
       self.mDelegate.passName("", isbn: "", autores: [],imagen: nil)
     }
+    
     self.dismissViewControllerAnimated(true, completion: nil)
   }
+  
+//  func crearImagenesEnt(autores: [String]) -> Set<NSObject> {
+//    var entidades = Set<NSObject>()
+//    
+//    for autor in autores {
+//      
+//      
+//    }
+//    
+//    
+//    return entidades
+//  }
+  
   // MARK: - Acciones
   
   func textFieldDidEndEditing(textField: UITextField) {
@@ -85,7 +136,6 @@ class ISBNViewController: UIViewController, UITextFieldDelegate {
               _ = NSString(data: datos!, encoding: NSUTF8StringEncoding)
               //print(texto!)
               var titulo = ""
-              var autores = ""
               do {
                 let json = try NSJSONSerialization.JSONObjectWithData(datos!, options: NSJSONReadingOptions.MutableContainers)
                 
@@ -105,7 +155,7 @@ class ISBNViewController: UIViewController, UITextFieldDelegate {
                   }
                   if let dicAutores = dico3 {
                     for autor in dicAutores {
-                      autores += "\(autor["name"] as! NSString as String) "
+                      self.autores += "\(autor["name"] as! NSString as String) "
                       self.autoresLibro.append("\(autor["name"] as! NSString as String)")
                     }
                   }
@@ -115,6 +165,10 @@ class ISBNViewController: UIViewController, UITextFieldDelegate {
               } catch _ {
                 print("Error")
               }
+              
+
+              
+              
               dispatch_async(dispatch_get_main_queue()) {
                 print(self.tituloLibro)
                 if (self.tituloLibro != "") {
@@ -123,7 +177,7 @@ class ISBNViewController: UIViewController, UITextFieldDelegate {
                 self.spinner.stopAnimating()
                 //self.textViewResultado?.text = texto! as String
                 self.labelTituloText.text = titulo
-                self.textViewResultado!.text = autores
+                self.textViewResultado!.text = self.autores
               }
             default:
               print("El get no fue satisfactorio")

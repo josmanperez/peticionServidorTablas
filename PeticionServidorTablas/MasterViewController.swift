@@ -33,13 +33,16 @@ class MasterViewController: UITableViewController, NSFetchedResultsControllerDel
   var titulos:[String] = []
   var isbnAcumulados:[ISBNModelo] = []
   
+  var contexto:NSManagedObjectContext? = nil
+  
   var detailViewController: DetailViewController? = nil
   var managedObjectContext: NSManagedObjectContext? = nil
   
   override func viewDidLoad() {
     super.viewDidLoad()
     
-    //self.tableView.reloadData()
+    compruebaBD()
+    
   }
   
   override func preferredStatusBarStyle() -> UIStatusBarStyle {
@@ -48,6 +51,37 @@ class MasterViewController: UITableViewController, NSFetchedResultsControllerDel
   
   override func viewDidAppear(animated: Bool) {
     //self.tableView.reloadData()
+  }
+  
+  func compruebaBD() {
+    print("comprobar que tengo algo en el modelo");
+    self.contexto = (UIApplication.sharedApplication().delegate as! AppDelegate).managedObjectContext
+    let seccionEntidad = NSEntityDescription.entityForName("Libro", inManagedObjectContext: self.contexto!)
+    let peticion = seccionEntidad?.managedObjectModel.fetchRequestTemplateForName("petLibros")
+    do {
+      isbnAcumulados = []
+      let seccionEntidad2 = try self.contexto?.executeFetchRequest(peticion!)
+      if (seccionEntidad2?.count > 0) {
+        print("existen elementos dentro");
+        for seccionEntidadInd in seccionEntidad2! {
+          print(seccionEntidadInd.valueForKey("titulo"))
+          var imagenLibro:UIImage?
+          if seccionEntidadInd.valueForKey("imagen") != nil {
+            imagenLibro = UIImage(data: seccionEntidadInd.valueForKey("imagen") as! NSData)
+          } else {
+            imagenLibro = nil
+          }
+          let isbnM = ISBNModelo(isbn: seccionEntidadInd.valueForKey("isbn") as! String, nombre: seccionEntidadInd.valueForKey("titulo") as! String, autores: [seccionEntidadInd.valueForKey("autores") as! String], imagen: imagenLibro)
+          isbnAcumulados.append(isbnM)
+        }
+        tableView.reloadData()
+      } else {
+        print("no hay elementos")
+      }
+      
+    } catch {
+      
+    }
   }
   
   @IBAction func btnAddISBN(sender: AnyObject) {
@@ -60,11 +94,12 @@ class MasterViewController: UITableViewController, NSFetchedResultsControllerDel
     print("1º VC")
     if (name != "" && name != "ISBN no válido") {
       print("nombre: \(name)")
-      let isbnM = ISBNModelo(isbn: isbn, nombre: name, autores: autores, imagen: imagen)
-      isbnAcumulados.append(isbnM)
+      //let isbnM = ISBNModelo(isbn: isbn, nombre: name, autores: autores, imagen: imagen)
+      //isbnAcumulados.append(isbnM)
       //titulos.append(name)
       //print(titulos.last)
-      tableView.reloadData()
+      //tableView.reloadData()
+      compruebaBD()
     }
   }
   
@@ -94,6 +129,7 @@ class MasterViewController: UITableViewController, NSFetchedResultsControllerDel
     } else {
       if segue.identifier == "showISBN" {
         (segue.destinationViewController as! ISBNViewController).mDelegate = self
+        (segue.destinationViewController as! ISBNViewController).contexto = self.contexto
       }
     }
   }
